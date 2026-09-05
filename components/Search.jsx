@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const popularSearches = ["Advil", "Ibuprofen", "Aspirin", "Paracetamol"];
+const suggestionCache = new Map();
 
 const normalizeBrandName = (value) => value.trim().toLowerCase();
 
@@ -26,9 +27,6 @@ const getMatchingBrandNames = (brandNames, query) => {
     })
     .slice(0, 6);
 };
-
-const getMedicineSlug = (brandName) =>
-  brandName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 const Search = ({ compact = false, initialQuery = "" }) => {
   const [query, setQuery] = useState(initialQuery);
@@ -52,16 +50,34 @@ const Search = ({ compact = false, initialQuery = "" }) => {
       return;
     }
 
+    const cachedSuggestions = suggestionCache.get(trimmedQuery.toLowerCase());
+
+    if (cachedSuggestions) {
+      setSuggestions(cachedSuggestions);
+      setSuggestionMessage(
+        cachedSuggestions.length ? "" : "Could not get suggestions. Try a similar name."
+      );
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
+    const controller = new AbortController();
+    let isActive = true;
 
     const timer = setTimeout(async () => {
       const apiUrl = `https://api.fda.gov/drug/label.json?search=openfda.brand_name:"${encodeURIComponent(trimmedQuery)}"&limit=8`;
 
       try {
-        const response = await fetch(apiUrl);
+        const response = await fetch(apiUrl, { signal: controller.signal });
         const data = await response.json();
 
+        if (!isActive) {
+          return;
+        }
+
         if (response.status === 404) {
+          suggestionCache.set(trimmedQuery.toLowerCase(), []);
           setSuggestions([]);
           setSuggestionMessage("Could not get suggestions. Try a similar name.");
           return;
@@ -76,19 +92,30 @@ const Search = ({ compact = false, initialQuery = "" }) => {
         const brandNames = data.results?.flatMap((result) => result.openfda?.brand_name || []) || [];
         const matchingBrandNames = getMatchingBrandNames(brandNames, trimmedQuery);
 
+        suggestionCache.set(trimmedQuery.toLowerCase(), matchingBrandNames);
         setSuggestions(matchingBrandNames);
         setSuggestionMessage(
           matchingBrandNames.length ? "" : "Could not get suggestions. Try a similar name."
         );
-      } catch {
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return;
+        }
+
         setSuggestions([]);
         setSuggestionMessage("Could not get suggestions. Try a similar name.");
       } finally {
-        setIsLoading(false);
+        if (isActive) {
+          setIsLoading(false);
+        }
       }
     }, 400);
 
-    return () => clearTimeout(timer);
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [hasUserTyped, query]);
 
   const submitSearch = (value) => {

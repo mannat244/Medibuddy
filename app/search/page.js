@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
@@ -22,9 +22,10 @@ const getValue = (values) => values?.join(", ") || "Not available";
 const getFirstValue = (values) => values?.[0] || "Not available";
 const CACHE_TTL = 5 * 60 * 1000;
 
-const SearchResultsPage = () => {
+const SearchResultsContent = () => {
   const router = useRouter();
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const query = searchParams.get("query") || "";
   const cacheKey = useMemo(
     () => `medibuddy-search-${query.trim().toLowerCase()}`,
     [query]
@@ -37,10 +38,6 @@ const SearchResultsPage = () => {
   const [status, setStatus] = useState("loading");
 
   useEffect(() => {
-    setQuery(new URLSearchParams(window.location.search).get("query") || "");
-  }, []);
-
-  useEffect(() => {
     if (!query) {
       setResults([]);
       setStatus("empty");
@@ -48,6 +45,8 @@ const SearchResultsPage = () => {
     }
 
     setStatus("loading");
+    const controller = new AbortController();
+    let isActive = true;
 
     try {
       const cachedData = JSON.parse(localStorage.getItem(cacheKey));
@@ -70,8 +69,12 @@ const SearchResultsPage = () => {
 
     const getResults = async () => {
       try {
-        const response = await fetch(apiUrl);
+        const response = await fetch(apiUrl, { signal: controller.signal });
         const data = await response.json();
+
+        if (!isActive) {
+          return;
+        }
 
         if (!response.ok) {
           throw new Error(data.error?.message || "Medicine search failed");
@@ -84,12 +87,18 @@ const SearchResultsPage = () => {
         );
         setResults(nextResults);
         setStatus(nextResults.length ? "success" : "empty");
-      } catch {
-        setStatus("error");
+      } catch (error) {
+        if (error.name !== "AbortError" && isActive) {
+          setStatus("error");
+        }
       }
     };
 
     getResults();
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
   }, [apiUrl, cacheKey, query]);
 
   return (
@@ -163,5 +172,11 @@ const SearchResultsPage = () => {
     </div>
   );
 };
+
+const SearchResultsPage = () => (
+  <Suspense fallback={<p className="p-6">Loading search results...</p>}>
+    <SearchResultsContent />
+  </Suspense>
+);
 
 export default SearchResultsPage;
