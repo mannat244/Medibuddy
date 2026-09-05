@@ -7,7 +7,7 @@ const Navbar = () => {
         
 
         <div>
-          <img src="/logo.png" className="h-10 w-auto" />
+          <img src="/logo.svg" className="h-10 w-auto" />
         </div>
 
 

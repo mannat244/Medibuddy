@@ -27,16 +27,17 @@ const getMatchingBrandNames = (brandNames, query) => {
     .slice(0, 6);
 };
 
-const Search = () => {
-  const [query, setQuery] = useState("");
+const Search = ({ compact = false, initialQuery = "" }) => {
+  const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const trimmedQuery = query.trim();
 
-    if (trimmedQuery.length < 2) {
+    if (!hasUserTyped || trimmedQuery.length < 2) {
       setSuggestions([]);
       setIsLoading(false);
       return;
@@ -50,10 +51,16 @@ const Search = () => {
       try {
         const response = await fetch(apiUrl);
         const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error?.message || "Unable to load suggestions");
+        }
+
         const brandNames = data.results?.flatMap((result) => result.openfda?.brand_name || []) || [];
 
         setSuggestions(getMatchingBrandNames(brandNames, trimmedQuery));
-      } catch {
+      } catch (error) {
+        console.error(error);
         setSuggestions([]);
       } finally {
         setIsLoading(false);
@@ -61,7 +68,7 @@ const Search = () => {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [hasUserTyped, query]);
 
   const submitSearch = (value) => {
     const nextQuery = value.trim();
@@ -90,16 +97,20 @@ const Search = () => {
   };
 
   return (
-    <section className="mx-auto max-w-3xl px-6 py-16 text-center">
+    <section className={`mx-auto max-w-3xl px-6 text-center ${compact ? "py-6" : "py-16"}`}>
       <div>
-        <h1 className="text-4xl font-bold">
-          Find Your Medicine on India&apos;s Largest Digital Healthcare Platform
-        </h1>
-        <p className="mt-4 text-muted-foreground">
-          Search medicines by brand name and find useful label information.
-        </p>
+        {!compact && (
+          <>
+            <h1 className="text-4xl font-bold">
+              Find Your Medicine on India&apos;s Largest Digital Healthcare Platform
+            </h1>
+            <p className="mt-4 text-muted-foreground">
+              Search medicines by brand name and find useful label information.
+            </p>
+          </>
+        )}
 
-        <form onSubmit={handleSubmit} className="mx-auto mt-8 flex max-w-xl gap-2">
+        <form onSubmit={handleSubmit} className={`mx-auto flex w-full max-w-3xl gap-3 ${compact ? "mt-0" : "mt-8"}`}>
           <label htmlFor="medicine-search" className="sr-only">
             Search medicines by brand name
           </label>
@@ -107,11 +118,16 @@ const Search = () => {
             id="medicine-search"
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setHasUserTyped(true);
+              setQuery(event.target.value);
+            }}
             placeholder="Search by brand name"
-            className="h-10 flex-1 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+            className="h-14 flex-1 rounded-full border bg-background px-5 text-base outline-none focus:ring-2 focus:ring-ring"
           />
-          <Button type="submit">Search</Button>
+          <Button type="submit" size="lg" className="h-14 rounded-full px-7 text-base" disabled={!query.trim()}>
+            Search
+          </Button>
         </form>
 
         {isLoading && (
@@ -137,20 +153,22 @@ const Search = () => {
           </dialog>
         )}
 
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-          <span className="text-sm text-muted-foreground">Popular:</span>
-          {popularSearches.map((medicine) => (
-            <Button
-              key={medicine}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handlePopularSearch(medicine)}
-            >
-              {medicine}
-            </Button>
-          ))}
-        </div>
+        {!compact && (
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            <span className="text-sm text-muted-foreground">Popular:</span>
+            {popularSearches.map((medicine) => (
+              <Button
+                key={medicine}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handlePopularSearch(medicine)}
+              >
+                {medicine}
+              </Button>
+            ))}
+          </div>
+        )}
 
       </div>
     </section>
