@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
@@ -20,12 +20,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const getValue = (values) => values?.join(", ") || "Not available";
 const getFirstValue = (values) => values?.[0] || "Not available";
+const CACHE_TTL = 5 * 60 * 1000;
 
 const SearchResultsPage = () => {
-  const searchParams = useSearchParams();
-  const query = searchParams.get("query") || "";
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const cacheKey = useMemo(
+    () => `medibuddy-search-${query.trim().toLowerCase()}`,
+    [query]
+  );
+  const apiUrl = useMemo(
+    () => `https://api.fda.gov/drug/label.json?search=openfda.brand_name:"${encodeURIComponent(query)}"&limit=20`,
+    [query]
+  );
   const [results, setResults] = useState([]);
   const [status, setStatus] = useState("loading");
+
+  useEffect(() => {
+    setQuery(new URLSearchParams(window.location.search).get("query") || "");
+  }, []);
 
   useEffect(() => {
     if (!query) {
@@ -34,7 +47,26 @@ const SearchResultsPage = () => {
       return;
     }
 
-    const apiUrl = `https://api.fda.gov/drug/label.json?search=openfda.brand_name:"${encodeURIComponent(query)}"&limit=20`;
+    setStatus("loading");
+
+    try {
+      const cachedData = JSON.parse(localStorage.getItem(cacheKey));
+      const cacheAge = Date.now() - cachedData.timestamp;
+
+      if (
+        Array.isArray(cachedData.results) &&
+        cacheAge >= 0 &&
+        cacheAge < CACHE_TTL
+      ) {
+        setResults(cachedData.results);
+        setStatus(cachedData.results.length ? "success" : "empty");
+        return;
+      }
+
+      localStorage.removeItem(cacheKey);
+    } catch {
+      localStorage.removeItem(cacheKey);
+    }
 
     const getResults = async () => {
       try {
@@ -45,15 +77,20 @@ const SearchResultsPage = () => {
           throw new Error(data.error?.message || "Medicine search failed");
         }
 
-        setResults(data.results || []);
-        setStatus(data.results?.length ? "success" : "empty");
+        const nextResults = data.results || [];
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({ timestamp: Date.now(), results: nextResults })
+        );
+        setResults(nextResults);
+        setStatus(nextResults.length ? "success" : "empty");
       } catch {
         setStatus("error");
       }
     };
 
     getResults();
-  }, [query]);
+  }, [apiUrl, cacheKey, query]);
 
   return (
     <div className="min-h-screen">
@@ -109,7 +146,11 @@ const SearchResultsPage = () => {
                   <Badge variant="outline">{getFirstValue(result.openfda?.route)}</Badge>
                   <Badge variant="secondary">{getFirstValue(result.openfda?.product_type)}</Badge>
                 </div>
-                <Button className="w-full" type="button">
+                <Button
+                  className="w-full"
+                  type="button"
+                  onClick={() => router.push(`/medicine?id=${encodeURIComponent(result.id)}`)}
+                >
                   Explore
                 </Button>
               </CardFooter>

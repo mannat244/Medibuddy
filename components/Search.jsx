@@ -27,18 +27,27 @@ const getMatchingBrandNames = (brandNames, query) => {
     .slice(0, 6);
 };
 
+const getMedicineSlug = (brandName) =>
+  brandName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
 const Search = ({ compact = false, initialQuery = "" }) => {
   const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState([]);
+  const [suggestionMessage, setSuggestionMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasUserTyped, setHasUserTyped] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   useEffect(() => {
     const trimmedQuery = query.trim();
 
     if (!hasUserTyped || trimmedQuery.length < 2) {
       setSuggestions([]);
+      setSuggestionMessage("");
       setIsLoading(false);
       return;
     }
@@ -52,16 +61,28 @@ const Search = ({ compact = false, initialQuery = "" }) => {
         const response = await fetch(apiUrl);
         const data = await response.json();
 
+        if (response.status === 404) {
+          setSuggestions([]);
+          setSuggestionMessage("Could not get suggestions. Try a similar name.");
+          return;
+        }
+
         if (!response.ok) {
-          throw new Error(data.error?.message || "Unable to load suggestions");
+          setSuggestions([]);
+          setSuggestionMessage("Could not get suggestions. Try a similar name.");
+          return;
         }
 
         const brandNames = data.results?.flatMap((result) => result.openfda?.brand_name || []) || [];
+        const matchingBrandNames = getMatchingBrandNames(brandNames, trimmedQuery);
 
-        setSuggestions(getMatchingBrandNames(brandNames, trimmedQuery));
-      } catch (error) {
-        console.error(error);
+        setSuggestions(matchingBrandNames);
+        setSuggestionMessage(
+          matchingBrandNames.length ? "" : "Could not get suggestions. Try a similar name."
+        );
+      } catch {
         setSuggestions([]);
+        setSuggestionMessage("Could not get suggestions. Try a similar name.");
       } finally {
         setIsLoading(false);
       }
@@ -77,6 +98,10 @@ const Search = ({ compact = false, initialQuery = "" }) => {
       return;
     }
 
+    setSuggestions([]);
+    setSuggestionMessage("");
+    setIsLoading(false);
+    setHasUserTyped(false);
     router.push(`/search?query=${encodeURIComponent(nextQuery)}`);
   };
 
@@ -92,7 +117,6 @@ const Search = ({ compact = false, initialQuery = "" }) => {
 
   const handleSuggestionClick = (value) => {
     setQuery(value);
-    setSuggestions([]);
     submitSearch(value);
   };
 
@@ -138,18 +162,22 @@ const Search = ({ compact = false, initialQuery = "" }) => {
           </div>
         )}
 
-        {suggestions.length > 0 && (
+        {(suggestions.length > 0 || suggestionMessage) && (
           <dialog open className="relative mx-auto mt-2 w-full max-w-xl rounded-md border bg-background p-2 text-left shadow-md">
-            {suggestions.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => handleSuggestionClick(suggestion)}
-              >
-                {suggestion}
-              </button>
-            ))}
+            {suggestionMessage ? (
+              <p className="px-3 py-2 text-sm text-muted-foreground">{suggestionMessage}</p>
+            ) : (
+              suggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                >
+                  {suggestion}
+                </button>
+              ))
+            )}
           </dialog>
         )}
 
