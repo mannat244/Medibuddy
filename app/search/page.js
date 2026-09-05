@@ -130,7 +130,10 @@ const SearchResultsContent = () => {
       {status === "success" && (
         <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {results.map((result) => (
-            <Card key={result.id} className="h-full">
+            <Card
+              key={result.id}
+              className="h-full transition-shadow duration-200 hover:shadow-md"
+            >
               <CardHeader>
                 <CardTitle className="text-lg">
                   {getFirstValue(result.openfda?.brand_name)}

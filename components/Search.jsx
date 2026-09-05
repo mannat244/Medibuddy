@@ -148,8 +148,14 @@ const Search = ({ compact = false, initialQuery = "" }) => {
   };
 
   return (
-    <section className={`mx-auto max-w-3xl px-6 text-center ${compact ? "py-6" : "py-16"}`}>
-      <div>
+    <section
+      className={`mx-auto w-full px-6 text-center ${
+        compact
+          ? "relative isolate w-full overflow-hidden bg-gradient-to-br from-red-50 via-white to-white py-6"
+          : "relative isolate overflow-hidden bg-gradient-to-br from-red-50 via-white to-white py-16"
+      }`}
+    >
+      <div className={compact ? "" : "mx-auto max-w-3xl"}>
         {!compact && (
           <>
             <h1 className="text-4xl font-bold">
@@ -209,14 +215,15 @@ const Search = ({ compact = false, initialQuery = "" }) => {
         )}
 
         {!compact && (
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <span className="text-sm text-muted-foreground">Popular:</span>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+            <span className="text-sm font-medium text-muted-foreground">Popular:</span>
             {popularSearches.map((medicine) => (
               <Button
                 key={medicine}
                 type="button"
                 variant="outline"
                 size="sm"
+                className="rounded-full border-slate-200 bg-transparent px-4 font-normal shadow-none hover:border-red-200 hover:bg-red-50 hover:text-red-700"
                 onClick={() => handlePopularSearch(medicine)}
               >
                 {medicine}

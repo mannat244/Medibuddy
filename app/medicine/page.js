@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowLeft,
   BadgeCheck,
   ClipboardList,
   Database,
@@ -131,7 +132,16 @@ const MedicineDetailsPage = () => {
         <Navbar />
         <main className="mx-auto max-w-5xl px-6 py-12">
           <p>Medicine details could not be loaded.</p>
-          <Button className="mt-4" onClick={() => router.back()}>Back to results</Button>
+          <Button
+            className="mt-4"
+            variant="ghost"
+            size="icon"
+            title="Back to results"
+            aria-label="Back to results"
+            onClick={() => router.back()}
+          >
+            <ArrowLeft />
+          </Button>
         </main>
         <Footer />
       </>
@@ -149,30 +159,42 @@ const MedicineDetailsPage = () => {
     : "Not available";
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-white">
       <Navbar />
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem><BreadcrumbLink href="/">Home</BreadcrumbLink></BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem><BreadcrumbLink href="/search">Medicines</BreadcrumbLink></BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem><BreadcrumbPage>{getFirstValue(openfda.brand_name)}</BreadcrumbPage></BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        <Button className="mt-6" variant="outline" onClick={() => router.back()}>
-          Back to results
-        </Button>
+        <div className="flex items-center justify-between gap-4">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem><BreadcrumbLink href="/">Home</BreadcrumbLink></BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem><BreadcrumbLink href="/search">Medicines</BreadcrumbLink></BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem><BreadcrumbPage>{getFirstValue(openfda.brand_name)}</BreadcrumbPage></BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Back to results"
+            aria-label="Back to results"
+            onClick={() => router.back()}
+          >
+            <ArrowLeft />
+          </Button>
+        </div>
 
         <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-3xl">{getFirstValue(openfda.brand_name)}</CardTitle>
-            <p className="max-w-3xl text-muted-foreground">{getValue(medicine.active_ingredient)}</p>
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Badge variant="outline">{getFirstValue(openfda.route)}</Badge>
-              <Badge variant="secondary">{getFirstValue(openfda.product_type)}</Badge>
+          <CardHeader className="md:grid-cols-[1fr_180px]">
+            <div className="space-y-2">
+              <CardTitle className="text-3xl">{getFirstValue(openfda.brand_name)}</CardTitle>
+              <p className="max-w-3xl text-muted-foreground">{getValue(medicine.active_ingredient)}</p>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant="outline">{getFirstValue(openfda.route)}</Badge>
+                <Badge variant="secondary">{getFirstValue(openfda.product_type)}</Badge>
+              </div>
+            </div>
+            <div className="relative flex min-h-32 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-red-100 via-white to-blue-100 p-6">
+              <Pill className="size-16 rotate-[-18deg] text-red-600/80" strokeWidth={1.5} aria-hidden="true" />
             </div>
           </CardHeader>
           <CardContent>
@@ -199,7 +221,7 @@ const MedicineDetailsPage = () => {
 
         <Card className="mt-6">
           <CardHeader>
-            <SectionHeading icon={Pill} color="text-blue-600" title="At a glance" />
+            <SectionHeading icon={Pill} color="text-blue-600" title="Quick medicine summary" />
           </CardHeader>
           <CardContent>
             <DetailRow title="Active ingredients" value={getValue(openfda.substance_name)} />

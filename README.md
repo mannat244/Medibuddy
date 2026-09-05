@@ -82,3 +82,4 @@ With more time, I would consider the following improvements:
 - Move API calls into Next.js route handlers so the application controls the API boundary and response handling.
 - Use Incremental Static Regeneration where appropriate for medicine records that can be safely cached and revalidated.
 - Spend more time on interaction design and UX testing, especially around search suggestions, loading transitions, result comparison, and detail-page navigation.
+- Refine the component structure further by separating the home hero text and search form into a dedicated `Hero` component, while keeping `Search` focused on input, suggestions, and routing.
